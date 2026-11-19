@@ -17,6 +17,9 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-jdopensource/JoyAI-VL-Interaction}"
 MAIN_MODEL_PORT="${MAIN_MODEL_PORT:-7060}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-131072}"
 MAIN_GPU_MEMORY_UTILIZATION="${MAIN_GPU_MEMORY_UTILIZATION:-0.9}"
+MAIN_ENFORCE_EAGER="${MAIN_ENFORCE_EAGER:-0}"
+MAIN_MAX_NUM_SEQS="${MAIN_MAX_NUM_SEQS:-}"
+MAIN_KV_CACHE_DTYPE="${MAIN_KV_CACHE_DTYPE:-auto}"
 LINEAR_BACKEND="${LINEAR_BACKEND:-auto}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 MAIN_SMOKE_ENABLE="${MAIN_SMOKE_ENABLE:-1}"
@@ -24,6 +27,13 @@ MAIN_SMOKE_ATTEMPTS="${MAIN_SMOKE_ATTEMPTS:-120}"
 MAIN_SMOKE_INTERVAL="${MAIN_SMOKE_INTERVAL:-2.0}"
 MAIN_SMOKE_TIMEOUT="${MAIN_SMOKE_TIMEOUT:-60.0}"
 MAIN_LOG_FILE=""
+MEMORY_ARGS=(--kv-cache-dtype "${MAIN_KV_CACHE_DTYPE}")
+if [[ "${MAIN_ENFORCE_EAGER}" == "1" ]]; then
+  MEMORY_ARGS+=(--enforce-eager)
+fi
+if [[ -n "${MAIN_MAX_NUM_SEQS}" ]]; then
+  MEMORY_ARGS+=(--max-num-seqs "${MAIN_MAX_NUM_SEQS}")
+fi
 LINEAR_BACKEND_ARGS=()
 if [[ "${LINEAR_BACKEND}" != "auto" ]]; then
   LINEAR_BACKEND_ARGS=(--linear-backend "${LINEAR_BACKEND}")
@@ -51,6 +61,9 @@ echo "  Tensor parallel size: ${TENSOR_PARALLEL_SIZE}"
 echo "  Data parallel size: ${DATA_PARALLEL_SIZE}"
 echo "  Local data parallel size: ${DATA_PARALLEL_SIZE_LOCAL}"
 echo "  Max model len: ${MAX_MODEL_LEN}"
+echo "  Enforce eager: ${MAIN_ENFORCE_EAGER}"
+echo "  Max sequences: ${MAIN_MAX_NUM_SEQS:-vLLM default}"
+echo "  KV cache dtype: ${MAIN_KV_CACHE_DTYPE}"
 echo "  Linear backend: ${LINEAR_BACKEND}"
 echo "  Smoke warmup: ${MAIN_SMOKE_ENABLE} (attempts=${MAIN_SMOKE_ATTEMPTS}, interval=${MAIN_SMOKE_INTERVAL}s, timeout=${MAIN_SMOKE_TIMEOUT}s)"
 if [[ -n "${MAIN_LOG_FILE}" ]]; then
@@ -77,6 +90,7 @@ CUDA_VISIBLE_DEVICES="${MAIN_GPU}" "${PYTHON_BIN}" -m vllm.entrypoints.openai.ap
     --tensor-parallel-size "${TENSOR_PARALLEL_SIZE}" \
     --data-parallel-size "${DATA_PARALLEL_SIZE}" \
     --data-parallel-size-local "${DATA_PARALLEL_SIZE_LOCAL}" \
+    "${MEMORY_ARGS[@]}" \
     "${LINEAR_BACKEND_ARGS[@]}" \
     --enable-prefix-caching \
     --enable-chunked-prefill &
